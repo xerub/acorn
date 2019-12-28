@@ -1,0 +1,52 @@
+Bugs and techniques to achieve untethered+unsandboxed code execution in iOS 11
+
+Credits:
+    @littlelailo - racoon bug (originally @pod2g)
+    @S1guza - ASLR bug
+    @ZecOps - sandbox escape writeup
+    @_bazad - memory spray
+
+Add iOS racoon executable and dyld_shared_cache_arm64 to device/ and type make.  Then collect racoon.conf and stage2.bin.  Enjoy!
+
+===
+
+racoon.conf
+    use 'wins4'/'dns4' to write arbitrary bytes at relative offset, targeting `lcconf`
+    point `lcconf` at the `_platform_memmove` lazy pointer and smash it
+    use 'banner' to call `strlcpy` which loads the smashed lazy pointer with controlled data
+
+stage1 sits inside the banner string and must not contain local pointers (runs at unknown address):
+    1. remap shared cache at known address
+    2. remap stage2 at known address inside racoon address space (stage2 must be on-disk, and must be accessible from the racoon sandbox)
+    3. stash the current slide at stage2[0]
+    4. jump to stage2
+
+stage2 runs inside racoon at fixed address:
+    1. relocate itself using stage2[0]
+    2. fix back `_platform_memmove` lazy pointer
+    3. unmap the secondary shared cache
+    4. relocate stage3
+    5. relocate stage4 and write it to disk (stage4 location must be accessible from the racoon sandbox)
+    6. trigger cfprefsd bug
+        push stage3 at GUESS_ADDR in a spray thread
+        trigger cfprefsd bug which will execute stage3 in the faulty thread
+
+stage3 is inside cfprefsd spray thread and must not contain local pointers (runs at unknown address after pivot):
+    1. copy back itself on the faulty thread stack, because the spray thread will vanish
+    2. pivot by means of `memmove+4`
+    3. remap stage4 at known address inside cfprefsd address space
+
+stage4 runs inside cfprefsd at fixed address:
+    1. run the unsandboxed payload
+
+===
+
+stage2 is split in two parts
+    a. the auto-reloc code: uses gadgets from the shadow cache
+    b. the actual code: uses gadgets from the main shared cache
+stage2 begins with `rope` and ends with `rope_end`
+    *rope = stage2[0] = slide
+    external relocations is an array of offsets, each offset being relative to `rope`
+    external relocations start with a 0, so it can be parsed backwards
+
+stage3/4 have the same type of external relocations as stage2
