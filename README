@@ -4,6 +4,7 @@ Credits:
     @littlelailo - racoon bug (originally @pod2g)
     @S1guza - ASLR bug
     @ZecOps - sandbox escape writeup
+    nemo - objective-c tricks
     @_bazad - memory spray
 
 Add iOS racoon executable and dyld_shared_cache_arm64 to device/ and type make.  Then collect racoon.conf and stage2.bin.  Enjoy!

