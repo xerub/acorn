@@ -6,8 +6,11 @@ Credits:
     @ZecOps - sandbox escape writeup
     nemo - objective-c tricks
     @_bazad - memory spray
+    @NedWilliamson - socket bug (exploit by @Jakeashacks)
+    @5aelo - phrack JSC paper
 
 Add iOS racoon executable and dyld_shared_cache_arm64 to device/ and type make.  Then collect racoon.conf and stage2.bin.  Enjoy!
+        stage{2,5,6}.{bin,js} should be renamed according to STAGE{2,5,6}_NAME in config.h
 
 ===
 
@@ -36,9 +39,17 @@ stage3 is inside cfprefsd spray thread and must not contain local pointers (runs
     1. copy back itself on the faulty thread stack, because the spray thread will vanish
     2. pivot by means of `memmove+4`
     3. remap stage4 at known address inside cfprefsd address space
+    4. jump to stage4, with x0 pointing inside the faulty thread stack
 
 stage4 runs inside cfprefsd at fixed address:
     1. run the unsandboxed payload
+        load and relocate stage5 at arbitrary address (faulty thread stack)
+        jump to stage5
+
+stage5 runs unsandboxed inside cfprefsd's stack:
+    1. dlopen(JavaScriptCore)
+    2. set up a leakval primitive & read/write/call for stage6
+    3. run stage6.js
 
 ===
 
@@ -51,3 +62,4 @@ stage2 begins with `rope` and ends with `rope_end`
     external relocations start with a 0, so it can be parsed backwards
 
 stage3/4 have the same type of external relocations as stage2
+stage5 has the same type of external relocations as stage2, preceded by local relocations of the same kind
